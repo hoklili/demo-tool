@@ -1,0 +1,96 @@
+import com.accompany.common.config.TencentCosConfig;
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.model.ObjectMetadata;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Date;
+
+@Slf4j
+@Service
+public class TencentCosMetaService {
+    @Autowired
+    private TencentCosConfig config;
+
+    @Autowired
+    private COSClient client;
+
+    public FileInfo detectFileType(String objectKey) {
+        // 获取对象元数据
+        ObjectMetadata metadata = client.getObjectMetadata(config.getBucket(), objectKey);
+        String contentType = metadata.getContentType();
+        String fileExtension = getFileExtension(objectKey);
+
+        FileInfo fileInfo = new FileInfo();
+        fileInfo.setContentType(contentType);
+        fileInfo.setFileExtension(fileExtension);
+        fileInfo.setFileFormat(getFileFormat(contentType, fileExtension));
+        fileInfo.setFileCategory(getFileCategory(contentType));
+
+        return fileInfo;
+    }
+
+    private String getFileExtension(String objectKey) {
+        int lastDotIndex = objectKey.lastIndexOf('.');
+        return lastDotIndex > 0 ? objectKey.substring(lastDotIndex + 1).toLowerCase() : "";
+    }
+
+    private String getFileFormat(String contentType, String fileExtension) {
+        // 根据 Content-Type 和文件扩展名确定具体格式
+        if (contentType != null) {
+            switch (contentType) {
+                case "video/mp4":
+                    return "mp4";
+                case "image/png":
+                    return "png";
+                case "image/jpeg":
+                    return "jpg";
+                case "image/gif":
+                    return "gif";
+                case "application/pdf":
+                    return "pdf";
+                case "application/zip":
+                    return "zip";
+                case "application/msword":
+                    return "doc";
+                case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                    return "docx";
+                default:
+                    return fileExtension.isEmpty() ? "unknown" : fileExtension;
+            }
+        }
+        return fileExtension.isEmpty() ? "unknown" : fileExtension;
+    }
+
+    private String getFileCategory(String contentType) {
+        if (contentType == null) return "unknown";
+
+        if (contentType.startsWith("video/")) return "video";
+        if (contentType.startsWith("image/")) return "image";
+        if (contentType.startsWith("audio/")) return "audio";
+        if (contentType.startsWith("text/")) return "text";
+        if (contentType.equals("application/pdf")) return "document";
+        if (contentType.contains("word") || contentType.contains("excel") || contentType.contains("powerpoint")) {
+            return "office";
+        }
+        if (contentType.equals("application/zip") || contentType.equals("application/x-rar-compressed")) {
+            return "archive";
+        }
+
+        return "other";
+    }
+
+    // 文件信息类
+    @Data
+    class FileInfo {
+        private String contentType;
+        private String fileExtension;
+        private String fileFormat;
+        private String fileCategory;
+        private long fileSize;
+        private Date lastModified;
+    }
+
+}
