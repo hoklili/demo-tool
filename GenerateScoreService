@@ -1,0 +1,30 @@
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class GenerateScoreService {
+
+    // 基准时间：2020-01-01 00:00:00 UTC
+    private static final long BASE_TIMESTAMP = 1577836800000L;
+    // 最大时间范围：100 年（约 315 亿秒，适合 32 位）
+    private static final long MAX_TIME_RANGE = 3153600000L; // 100 * 365 * 24 * 3600
+
+    /**
+     * 生成组合分数
+     * 原理：整数部分存分数，小数部分存时间倒序
+     *
+     * @param scoreValue 原始分数
+     * @param timestamp  时间戳（毫秒）
+     * @return 组合后的score
+     */
+    private static double generateScore(Long scoreValue, long timestamp) {
+
+        long secondsFromBase = (timestamp - BASE_TIMESTAMP) / 1000;
+        // 转换为倒序时间：时间越新，值越小
+        long reversedTime = MAX_TIME_RANGE - secondsFromBase;
+
+        // 将倒序时间作为小数部分
+        // 例如：score=100, timestamp=1640995200000 → 100.9223372036854775807
+        return scoreValue + reversedTime / (double) MAX_TIME_RANGE;
+    }
+}
